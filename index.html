@@ -305,6 +305,10 @@
   <div class="topbar-label">Inventory</div>
   <div class="topbar-title">Tea Shop ☕</div>
   <div class="topbar-date" id="topbar-date"></div>
+
+<button onclick="resetInventory()" style="margin-top:10px;padding:8px 14px;border:none;border-radius:8px;background:white;color:#1A5E3A;font-weight:600;cursor:pointer;">
+  Reset Inventory
+</button>
 </div>
 
 <div class="summary-strip">
@@ -430,11 +434,78 @@ function loadData() {
 
 function defaultProducts() {
   return [
-    { id:1, name:'Osmania', type:'carton', packets:30, pcs:24, stock:0, threshold:50, icon:'🍪' },
-    { id:2, name:'Rusk', type:'carton', packets:120, pcs:18, stock:0, threshold:100, icon:'🥐' },
-    { id:3, name:'Almond Sticks', type:'box', units:20, stock:0, threshold:20, icon:'🌰' },
-    { id:4, name:'Cashew Sticks', type:'box', units:20, stock:0, threshold:20, icon:'🥜' },
-    { id:5, name:'Choco Sticks', type:'box', units:20, stock:0, threshold:20, icon:'🍫' },
+    {
+      id:1,
+      name:'Osmania Biscuits',
+      type:'carton',
+      packets:30,
+      pcs:24,
+      stock:720,
+      threshold:100,
+      icon:'🍪',
+      lastUpdated:'Never'
+    },
+    {
+      id:2,
+      name:'Rusk',
+      type:'carton',
+      packets:120,
+      pcs:18,
+      stock:500,
+      threshold:150,
+      icon:'🥐',
+      lastUpdated:'Never'
+    },
+    {
+      id:3,
+      name:'Almond Sticks',
+      type:'box',
+      units:20,
+      stock:100,
+      threshold:20,
+      icon:'🌰',
+      lastUpdated:'Never'
+    },
+    {
+      id:4,
+      name:'Cashew Sticks',
+      type:'box',
+      units:20,
+      stock:80,
+      threshold:20,
+      icon:'🥜',
+      lastUpdated:'Never'
+    },
+    {
+      id:5,
+      name:'Choco Sticks',
+      type:'box',
+      units:20,
+      stock:120,
+      threshold:20,
+      icon:'🍫',
+      lastUpdated:'Never'
+    },
+    {
+      id:6,
+      name:'Tea Powder',
+      type:'box',
+      units:50,
+      stock:200,
+      threshold:50,
+      icon:'🫖',
+      lastUpdated:'Never'
+    },
+    {
+      id:7,
+      name:'Coffee Cups',
+      type:'box',
+      units:100,
+      stock:1000,
+      threshold:200,
+      icon:'☕',
+      lastUpdated:'Never'
+    }
   ];
 }
 
@@ -448,6 +519,10 @@ function ppc(p) { return p.type === 'carton' ? p.pcs : 1; }
 function unitLabel(p) { return p.type === 'carton' ? 'cartons' : 'boxes'; }
 function dispLabel(p) { return p.type === 'carton' ? 'packets' : 'units'; }
 function metaStr(p) { return p.type === 'carton' ? `1 carton = ${p.packets} pkts × ${p.pcs} pcs` : `1 box = ${p.units} units`; }
+
+function lastUpdStr(p) {
+  return p.lastUpdated || 'Never updated';
+}
 
 function badgeClass(p) {
   if (p.stock <= 0) return 'critical';
@@ -536,27 +611,76 @@ function toggleCard(pid, headerEl) {
 
 function applyUpdate(pid) {
   const p = products.find(x => x.id===pid);
-  const buyVal = Math.max(0, parseInt(document.getElementById('buy-'+pid)?.value)||0);
-  const sndVal = Math.max(0, parseInt(document.getElementById('snd-'+pid)?.value)||0);
+
+  const buyVal = Math.max(0, parseInt(document.getElementById('buy-'+pid)?.value) || 0);
+  const sndVal = Math.max(0, parseInt(document.getElementById('snd-'+pid)?.value) || 0);
+
   const buyPcs = buyVal * ppb(p);
   const sndPcs = sndVal * ppc(p);
-  if (!buyPcs && !sndPcs) { showToast('Nothing to update'); return; }
-  p.stock = Math.max(0, p.stock + buyPcs - sndPcs);
-  p.lastUpdated = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) + ' ' + now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+
+  if (!buyPcs && !sndPcs) {
+    showToast('Nothing to update');
+    return;
+  }
+
   const now = new Date();
-  const dateStr = now.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
-  const timeStr = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  if (buyPcs) log.unshift({type:'in',product:p.name,icon:p.icon||'🍪',pcs:buyPcs,detail:`${buyVal} ${unitLabel(p)} received`,date:dateStr,time:timeStr});
-  if (sndPcs) log.unshift({type:'out',product:p.name,icon:p.icon||'🍪',pcs:sndPcs,detail:`${sndVal} ${dispLabel(p)} dispatched`,date:dateStr,time:timeStr});
-  if (log.length > 200) log = log.slice(0,200);
+
+  const dateStr = now.toLocaleDateString('en-GB', {
+    day:'2-digit',
+    month:'short',
+    year:'numeric'
+  });
+
+  const timeStr = now.toLocaleTimeString('en-GB', {
+    hour:'2-digit',
+    minute:'2-digit'
+  });
+
+  p.stock = Math.max(0, p.stock + buyPcs - sndPcs);
+  p.lastUpdated = `${dateStr} ${timeStr}`;
+
+  if (buyPcs) {
+    log.unshift({
+      type:'in',
+      product:p.name,
+      icon:p.icon || '🍪',
+      pcs:buyPcs,
+      detail:`${buyVal} ${unitLabel(p)} received`,
+      date:dateStr,
+      time:timeStr
+    });
+  }
+
+  if (sndPcs) {
+    log.unshift({
+      type:'out',
+      product:p.name,
+      icon:p.icon || '🍪',
+      pcs:sndPcs,
+      detail:`${sndVal} ${dispLabel(p)} dispatched`,
+      date:dateStr,
+      time:timeStr
+    });
+  }
+
+  if (log.length > 200) {
+    log = log.slice(0, 200);
+  }
+
   saveData();
-  showToast(`${p.name} updated ✓`);
+
   document.getElementById('buy-'+pid).value = 0;
   document.getElementById('snd-'+pid).value = 0;
   document.getElementById('buy-conv-'+pid).textContent = '';
   document.getElementById('snd-conv-'+pid).textContent = '';
+
   document.getElementById('body-'+pid).classList.remove('open');
+
   renderStock();
+  renderLog();
+  renderManage();
+
+  showToast(`${p.name} updated successfully ✓`);
 }
 
 function renderLog() {
@@ -707,6 +831,24 @@ const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 const now = new Date();
 document.getElementById('topbar-date').textContent =
   `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+
+function resetInventory() {
+  if (!confirm('Reset all inventory data?')) return;
+
+  localStorage.removeItem('ts2_products');
+  localStorage.removeItem('ts2_log');
+
+  products = defaultProducts();
+  log = [];
+
+  saveData();
+
+  renderStock();
+  renderLog();
+  renderManage();
+
+  showToast('Inventory reset successfully');
+}
 
 loadData();
 renderStock();
